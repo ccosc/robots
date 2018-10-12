@@ -1,0 +1,137 @@
+#-*-coding:utf-8-*-
+#aim :100 thousand lines code
+#author: dezan zhao
+#依赖库尽可能少
+import requests
+import re
+import pdb
+if __name__=='__main__':
+	my={"name":"eva","sex":"girl","age":'42','father':'Dezan'}#the entity of machine
+	your={}#the entity of talker man
+	res={"hi":"hi"}
+	i = 0 
+	your_sent_mem = ['1','2','3']#remember your sent memory
+	caesar_sent_mem = ['1','2','3']
+	adj_mem_good = []#褒义形容词
+	adj_mem_bad =[]#贬义形容词
+	good_emotion=['happy']
+	bad_emotion =['sad']
+	noun = []
+	ans = ''#caesar's answer
+	word_tmp =''#临时词汇
+	yes_mode = 0
+	#pdb.set_trace()
+	learn_iter = 0 #学习次数
+	mode = 0 #各项能力的模式，0是一般模式
+	'''
+	1 数学模式
+	'''
+	while True:
+		your_sent = raw_input("you:") #the sentence you send
+		your_sent_mem.pop(0)
+		your_sent_mem.append(your_sent)
+		your_sent_list = your_sent.split(' ')
+		#pdb.set_trace()
+		if 'fuck' in your_sent_list or 'bitch' in your_sent_list:#关键词过滤
+			ans = 'I am pure,I am not programmed to answer this question'
+		#知识图谱构建：根据一句话自动形成图谱
+		#知识图谱构建：输入文章自动形成知识图谱
+		#知识图谱检索：根据本地知识图谱进行联想回答
+		#知识图谱检索：根据网络知识图谱进行知识问答
+		#图文结合：看图说话(tensorflow)
+		#图文结合：图像问答(pytorch)
+		#知识图谱与增强学习
+		elif 'math' in your_sent_list:
+			ans = 'I am a mathematical genius,you can ask me some math questions'
+			mode = 1
+		elif mode==1:
+			from sympy import *#导入包，安装用pip
+			x = Symbol('x')
+			y = Symbol('y')
+			m = Symbol('m')
+			n = Symbol('n')#预定义的变量
+			try:
+				ans = str(eval(your_sent))#eval将your_sent执行，str将结果变成字符串
+			except:
+				ans = 'i am not a mathematical now.'
+				mode = 0
+		elif ('what\'s' in your_sent_list or 'what' in your_sent_list) and 'time' in your_sent_list:#时间查询
+			import time
+			ans = 'now it is ' + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())) 		
+		elif 'what' in your_sent_list:
+			your_sent = your_sent.replace("your","my")
+			ind = your_sent_list.index('your')
+			if my.has_key(your_sent_list[ind+1]):
+				ans = 'my ' + your_sent_list[ind+1] +' is '+my[your_sent_list[ind+1]]
+		elif 'who' in your_sent_list:
+			your_sent = your_sent.replace("your","my")
+                        ind = your_sent_list.index('your')
+                        if my.has_key(your_sent_list[ind+1]):
+                                ans = 'my ' + your_sent_list[ind+1] +' is '+my[your_sent_list[ind+1]] 
+		elif 'should' in your_sent_list or 'can' in your_sent_list or'may ' in your_sent_list:
+			ind = your_sent_list.index('can')
+			ans = ' '.join(your_sent_list[ind+2:])
+			res[your_sent_mem[1]]=' '.join(your_sent_list[ind+2:])
+		elif res.has_key(your_sent) :#条件反射式的回答hi-hi
+			ans = res[your_sent]
+		elif 'a' in your_sent_list:
+			ind = your_sent_list.index('a')	
+			word_tmp = your_sent_list[ind+1]
+			ans = 'Is the word ' + word_tmp +' a noun ?'	
+		elif 'yes' in your_sent_list:
+			if yes_mode==0:
+				noun.append(word_tmp)
+				ans = 'I remember it'
+			elif yes_mode==1:
+				adj_mem_good.append(word_tmp)
+				ans = 'Got it'
+		elif 'no'  in your_sent_list:
+			ans = 'so,it is a adj?'
+		elif 'i' in your_sent_list and 'am' in your_sent_list:#处理I am 情绪
+			ind = your_sent_list.index('am')
+			word_tmp = your_sent_list[ind+1]
+			if word_tmp in good_emotion:
+				ans = 'I am glad to hear that,'
+			else:
+				ans = 'I am sorry to hear that'
+		elif 'you' in your_sent_list and 'are' in your_sent_list:#判断款将还是批评
+			ind = your_sent_list.index('are')
+			word_tmp = your_sent_list[ind+1]
+			if word_tmp in adj_mem_good:
+				ans = 'thank you for your word,you too'
+			elif word_tmp in adj_mem_bad:
+				ans = 'no ,i am not bad'
+			elif word_tmp in good_emotion or word_tmp in bad_emotion:
+				ans = 'i am a robot ,i have no emotion'
+			else:
+				ans = 'Is the word '+' '.join(your_sent_list[ind+1:]) +' good sentence?'	
+		elif  'so' in your_sent_list:
+			ind = your_sent_list.index('so')
+			word_tmp = your_sent_list[ind+1]
+			if word_tmp in adj_mem_good:
+				ans = 'Thank you .you are good too'
+			elif word_tmp in adj_mem_bad:
+				ans = 'please do not think me bad'
+			else:
+				ans = 'is the word' + your_sent_list[ind+1] + ' good proj one?'
+				yes_mode = 1
+		elif '?' in your_sent:#question which can be searched from the website
+			html_web = requests.get('http://www.answers.com/Q/'+your_sent)
+			try:
+				html_div = re.search('<div class="answer_text">([\s\S]*?)</div>',html_web.text).group()
+				dr = re.compile(r'<[^>]+>',re.S)
+				dd = dr.sub('',html_div)
+				ans = dd.strip()
+			except:
+				ans = 'I do not know.Maybe you can ask another question.'
+		else:#遇到无法处理的情况
+			ans = 'I am a ape now,I don\'t know how to answer.You can teach me '
+		print 'Caesar:' + ans
+		learn_iter = learn_iter + 1
+		if learn_iter ==100:
+			print 'Caesar:'+'now i learn enough ,I can say by my self'
+			break
+	
+	while True:
+		your_sent = raw_input("you:")
+		print 'Caesar:'+'hehe'
